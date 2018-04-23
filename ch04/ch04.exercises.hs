@@ -1,5 +1,6 @@
 -- file: ch04/ch04.exercises.hs
 import System.Environment (getArgs)
+import Data.Char (digitToInt)
 
 safeHead :: [a] -> Maybe a
 safeHead [] = Nothing
@@ -37,7 +38,6 @@ interactWith function inputFile outputFile = do
     input <- readFile inputFile
     writeFile outputFile (function input)
 
-
 main = mainWith myFunction
     where mainWith function = do
             args <- getArgs
@@ -48,3 +48,35 @@ main = mainWith myFunction
           -- replace "id" with the name of our function below
           myFunction = printFirstWordOfEachLine
 
+
+asInt_fold :: String -> Int
+asInt_fold "" = error "This String is empty."
+asInt_fold ('-':xs) |xs == [] = error "Not a number."
+                    |otherwise = -1 * (asInt_fold xs)
+asInt_fold (x:xs) |elem '.' (x:xs) = error "Decimals cannot be parsewd by this function."
+                  |otherwise = foldl helper 0 (x:xs)
+                  where helper acc y    |acc > ((acc * 10) + (digitToInt y)) = error "Your number is too big for an Int"
+                                        |otherwise = (acc * 10) + (digitToInt y)
+          
+          
+-- type ErrorMessage = String
+-- asInt_either :: String -> Either ErrorMessage Int 
+-- asInt_either "" = Left "This String is empty."
+-- asInt_either ('-':xs)   |xs == [] = Left "Not a number."
+--                        |otherwise = -1 * (asInt_fold xs)
+-- asInt_either (x:xs) |elem '.' (x:xs) = Left "Decimals cannot be parsed by this function."
+                    -- |otherwise = (foldl helper 0 (x:xs))
+                    -- where helper acc y  |acc > ((acc * 10) + (digitToInt y)) = Left "Your number is too big for an Int"
+                                        -- |otherwise = (acc * 10) + (digitToInt y)
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
