@@ -1,6 +1,9 @@
 -- file: ch04/ch04.exercises.hs
 import System.Environment (getArgs)
-import Data.Char (digitToInt)
+import Data.Char (digitToInt, isDigit)
+import Data.Either
+import Control.Exception
+import System.IO.Unsafe
 
 safeHead :: [a] -> Maybe a
 safeHead [] = Nothing
@@ -55,28 +58,62 @@ asInt_fold ('-':xs) |xs == [] = error "Not a number."
                     |otherwise = -1 * (asInt_fold xs)
 asInt_fold (x:xs) |elem '.' (x:xs) = error "Decimals cannot be parsewd by this function."
                   |otherwise = foldl helper 0 (x:xs)
-                  where helper acc y    |acc > ((acc * 10) + (digitToInt y)) = error "Your number is too big for an Int"
+                  where helper acc y    |checkIfOverflow acc (digitToInt y) = error "Your number is too big for an Int"
                                         |otherwise = (acc * 10) + (digitToInt y)
+                        checkIfOverflow :: Int -> Int -> Bool
+                        checkIfOverflow acc y = (checkIfMultOverflow acc) || (checkIfAddOverflow acc y)
+                        checkIfMultOverflow acc = ((fromIntegral (acc * 10)) / fromIntegral 10) /= fromIntegral acc 
+                        checkIfAddOverflow acc y = (acc * 10) > ((acc*10)+y)
+
+
+
+ 
+-- I guess this not the solution the book demands. I postpone it until I now more about monads and error handling. 
+type ErrorMessage = String
+asInt_either :: String -> Either ErrorMessage Int 
+asInt_either "" = Left "This String is empty."
+asInt_either ('-':xs)   |xs == [] = Left "Not a number."
+                        |otherwise = let res = (asInt_either xs)
+                                     in if (isLeft res)
+                                        then res
+                                        else Right ( -1 * (fromRight 0 res))
+asInt_either (x:xs)     |elem '.' (x:xs) = Left "Decimals cannot be parsed by this function."
+                        |otherwise = foldl helper (Right 0) (x:xs)
+                        where helper acc y  |isLeft acc = acc
+                                            |not (isDigit y) = Left ("non-digit '" ++ [y] ++ "'")
+                                            |checkIfOverflow (fromRight 0 acc) (digitToInt y) = Left "Your number is too big for an Int"
+                                            |otherwise = Right (((fromRight 0 acc) * 10) + (digitToInt y))
+                              checkIfOverflow :: Int -> Int -> Bool
+                              checkIfOverflow acc y = (checkIfMultOverflow acc) || (checkIfAddOverflow acc y)
+                              checkIfMultOverflow acc = ((fromIntegral (acc * 10)) / fromIntegral 10) /= fromIntegral acc 
+                              checkIfAddOverflow acc y = (acc * 10) > ((acc*10)+y)
+
+                            
+myConcat :: [[x]] -> [x]
+myConcat xs = foldr (++) [] xs
           
-          
--- type ErrorMessage = String
--- asInt_either :: String -> Either ErrorMessage Int 
--- asInt_either "" = Left "This String is empty."
--- asInt_either ('-':xs)   |xs == [] = Left "Not a number."
---                        |otherwise = -1 * (asInt_fold xs)
--- asInt_either (x:xs) |elem '.' (x:xs) = Left "Decimals cannot be parsed by this function."
-                    -- |otherwise = (foldl helper 0 (x:xs))
-                    -- where helper acc y  |acc > ((acc * 10) + (digitToInt y)) = Left "Your number is too big for an Int"
-                                        -- |otherwise = (acc * 10) + (digitToInt y)
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
-          
+takeWhileRec :: (a -> Bool) -> [a] -> [a]
+takeWhileRec _ [] = []
+takeWhileRec pred (x:xs) |not (pred x) = []
+                         |otherwise = x:(takeWhileRec pred xs)
+                         
+takeWhileFoldr :: (a -> Bool) -> [a] -> [a]
+takeWhileFoldr pred xs = foldr step [] xs
+                            where step x ys |pred x = x : ys
+                                            |otherwise = []
+
+-- This implementation gives a different results than the standard implementation in some cases:
+-- *Main Data.List> myGroupBy (\x y -> (x*y `mod` 3) == 0) [1,2,3,4,5,6,7,8,9] 
+-- [[1],[2,3,4],[5,6,7],[8,9]]
+-- *Main Data.List> groupBy (\x y -> (x*y `mod` 3) == 0) [1,2,3,4,5,6,7,8,9] 
+-- [[1],[2,3],[4],[5,6],[7],[8,9]]
+-- The definition documentaions says "The function is assumed to define a total ordering" which is not the case here.
+-- Found out the Prelude version does check against the first element of each sublist while I check angainst the neighboring element.
+-- However, this makes no difference if a total ordering is used.                              
+myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
+myGroupBy pred xs = foldr step [[]] xs
+                        where step x [[]] = [[x]]
+                              step x (y:ys) |pred x (head y) = (x:y):ys
+                                            |otherwise = [x]:y:ys
+
+
