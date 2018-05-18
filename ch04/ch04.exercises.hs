@@ -1,6 +1,6 @@
 -- file: ch04/ch04.exercises.hs
 import System.Environment (getArgs)
-import Data.Char (digitToInt, isDigit)
+import Data.Char (digitToInt, isDigit, isSpace)
 import Data.Either
 import Control.Exception
 import System.IO.Unsafe
@@ -115,5 +115,52 @@ myGroupBy pred xs = foldr step [[]] xs
                         where step x [[]] = [[x]]
                               step x (y:ys) |pred x (head y) = (x:y):ys
                                             |otherwise = [x]:y:ys
+
+
+                                            
+-- any can be implemented using both foldl or foldr. However, both variant are not 
+-- very efficient since they have to go through the hole list instead of stoppping 
+-- in case an element that satisfies the pred.
+anyFoldl :: (a -> Bool) -> [a] -> Bool 
+anyFoldl pred xs = foldl helper False xs
+                    where helper b x = b || pred x
+
+anyFoldr :: (a -> Bool) -> [a] -> Bool
+anyFoldr pred xs = foldr helper False xs
+                    where helper x b = b || pred x
+
+-- Here is a more efficient variant that works on infinte lists, too (At least when there is an element that satifies the pred).
+-- This is because of the lazy evaluation and || returning true without checking the second argument.
+-- Therefore, foldr is more appropriate for this task.
+anyFoldr2 :: (a -> Bool) -> [a] -> Bool
+anyFoldr2 pred xs = foldr helper False xs
+                    where helper x b = pred x || b
+
+
+-- Foldr looks way more suitable here.
+cycleFoldr :: [a] -> [a]
+cycleFoldr xs = foldr (:) (cycleFoldr xs) xs       
+
+-- But I like the most this very readble and very short form
+cycleNoFold xs = xs ++ (cycleNoFold xs)
+          
+wordsFoldr :: String -> [String]
+wordsFoldr xs = filter (\l -> (not (null l))) (foldr step [[]] xs)
+                            where step x (y:ys) |isSpace x = []:y:ys
+                                                |otherwise = (x:y):ys
+
+                                                
+wordsFoldl :: String -> [String]
+wordsFoldl xs = snd (foldl step ("",[]) (xs++"\n"))
+                        where   step (cur,acc) x    |isSpace x && null cur = ("", acc)
+                                                    |isSpace x = ("",acc ++ [cur])
+                                                    |otherwise = (cur ++ [x], acc)    
+                          
+
+--wordsFoldl xs = foldl step "" xs
+--                    where step x (y:ys) = x ++ y ++ "\n"
+
+
+
 
 
